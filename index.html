@@ -1,0 +1,1711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Yadea RS20 Cockpit Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090b0e;
+      --card-bg: rgba(18, 22, 28, 0.78);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent: #00f090;
+      --accent-glow: rgba(0, 240, 144, 0.35);
+      --accent-cyan: #00e5ff;
+      --accent-cyan-glow: rgba(0, 229, 255, 0.25);
+      --surface-subtle: rgba(255, 255, 255, 0.035);
+      --surface-active: rgba(255, 255, 255, 0.07);
+      --text: #f3f5f8;
+      --text-muted: #8b95a5;
+      --text-dim: #545e6d;
+      --border-subtle: rgba(255, 255, 255, 0.09);
+      --border-focus: #00f090;
+      --danger: #ff4757;
+      --warning: #ffb142;
+      --radius-xl: 24px;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 0%, #152223 0%, #0c1216 45%, #080a0d 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 24px 16px 40px;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Subtle ambient EV lighting */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -120px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 380px;
+      height: 240px;
+      background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+      filter: blur(50px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.55;
+    }
+
+    .app-shell {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 440px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-xl);
+      padding: 24px 22px;
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      box-shadow: 0 24px 50px -10px rgba(0, 0, 0, 0.7),
+                  0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+    }
+
+    /* Top Navigation / Brand Header */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(0, 240, 144, 0.18), rgba(0, 229, 255, 0.08));
+      border: 1px solid rgba(0, 240, 144, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    .brand-icon svg {
+      width: 22px;
+      height: 22px;
+      fill: var(--accent);
+    }
+
+    .brand-text h1 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .brand-text h1 span {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      background: rgba(0, 240, 144, 0.12);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(0, 240, 144, 0.3);
+      letter-spacing: 0.5px;
+    }
+
+    .brand-text p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      letter-spacing: 0.2px;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    /* Segmented Tab Switcher */
+    .nav-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      background: rgba(8, 11, 14, 0.7);
+      padding: 5px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-subtle);
+      margin-bottom: 24px;
+      position: relative;
+    }
+
+    .tab-btn {
+      position: relative;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      padding: 11px 14px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .tab-btn svg {
+      width: 17px;
+      height: 17px;
+      stroke-width: 2.2;
+      stroke: currentColor;
+      fill: none;
+      transition: transform 0.2s;
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03));
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+    }
+
+    .tab-btn.active svg {
+      stroke: var(--accent);
+      transform: scale(1.08);
+    }
+
+    /* Card Panels */
+    .cockpit-card {
+      background: rgba(14, 18, 24, 0.6);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 18px 16px;
+      margin-bottom: 18px;
+      transition: border-color 0.2s;
+    }
+
+    .cockpit-card:hover {
+      border-color: rgba(255, 255, 255, 0.14);
+    }
+
+    .card-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .card-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .card-label svg {
+      width: 14px;
+      height: 14px;
+      stroke: var(--accent);
+    }
+
+    .card-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: rgba(0, 240, 144, 0.1);
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(0, 240, 144, 0.25);
+    }
+
+    /* Battery Bar Visualizer */
+    .battery-visual-gauge {
+      background: #080b0e;
+      border: 1.5px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 8px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      position: relative;
+      margin-bottom: 12px;
+    }
+
+    .battery-cap {
+      position: absolute;
+      right: -8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 5px;
+      height: 18px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 0 3px 3px 0;
+    }
+
+    .battery-bar-btn {
+      height: 48px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .battery-bar-btn .bar-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      transition: color 0.2s;
+    }
+
+    .battery-bar-btn .bar-pct {
+      font-size: 0.62rem;
+      color: var(--text-dim);
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+
+    .battery-bar-btn.lit {
+      background: linear-gradient(180deg, rgba(0, 240, 144, 0.22) 0%, rgba(0, 240, 144, 0.07) 100%);
+      border-color: rgba(0, 240, 144, 0.45);
+      box-shadow: 0 0 14px rgba(0, 240, 144, 0.2) inset, 0 0 8px rgba(0, 240, 144, 0.15);
+    }
+
+    .battery-bar-btn.lit .bar-num {
+      color: #fff;
+    }
+
+    .battery-bar-btn.lit .bar-pct {
+      color: var(--accent);
+    }
+
+    .battery-target-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      padding: 0 4px;
+    }
+
+    .battery-target-info span strong {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* Input Controls */
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .input-label {
+      display: block;
+      font-size: 0.73rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-icon {
+      position: absolute;
+      left: 14px;
+      width: 17px;
+      height: 17px;
+      stroke: var(--text-muted);
+      pointer-events: none;
+      transition: stroke 0.2s;
+    }
+
+    .input-field {
+      width: 100%;
+      background: #090c10;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text);
+      font-size: 0.95rem;
+      font-weight: 500;
+      padding: 12px 14px 12px 42px;
+      outline: none;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) inset;
+    }
+
+    .input-field.no-icon {
+      padding-left: 14px;
+    }
+
+    .input-field:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(0, 240, 144, 0.15), 0 2px 4px rgba(0, 0, 0, 0.2) inset;
+    }
+
+    .input-field:focus + .input-icon,
+    .input-wrapper:focus-within .input-icon {
+      stroke: var(--accent);
+    }
+
+    .input-suffix {
+      position: absolute;
+      right: 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      pointer-events: none;
+    }
+
+    /* Dual Grid Layout for Times */
+    .dual-time-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .time-card {
+      background: #090c10;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      transition: border-color 0.2s;
+    }
+
+    .time-card:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0, 240, 144, 0.12);
+    }
+
+    .time-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .time-card-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+    }
+
+    .btn-quick-now {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--accent);
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-quick-now:hover {
+      background: rgba(0, 240, 144, 0.15);
+      border-color: rgba(0, 240, 144, 0.3);
+    }
+
+    .time-input-native {
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.05rem;
+      font-weight: 700;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Duration Pill */
+    .duration-indicator {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(90deg, rgba(0, 229, 255, 0.09) 0%, rgba(0, 240, 144, 0.08) 100%);
+      border: 1px solid rgba(0, 229, 255, 0.25);
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      margin-top: 10px;
+    }
+
+    .duration-indicator svg {
+      width: 15px;
+      height: 15px;
+      stroke: var(--accent-cyan);
+      flex-shrink: 0;
+    }
+
+    .duration-text {
+      font-size: 0.78rem;
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .duration-text strong {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent-cyan);
+      font-weight: 700;
+      margin-left: 2px;
+    }
+
+    /* Smart Charging Alarm & Estimation Card */
+    .smart-alarm-box {
+      margin-top: 12px;
+      background: linear-gradient(135deg, rgba(0, 229, 255, 0.08) 0%, rgba(0, 240, 144, 0.06) 100%);
+      border: 1px solid rgba(0, 229, 255, 0.22);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .smart-alarm-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .alarm-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+
+    .alarm-title svg {
+      width: 15px;
+      height: 15px;
+      stroke: var(--accent-cyan);
+    }
+
+    .alarm-est-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: rgba(0, 240, 144, 0.12);
+      border: 1px solid rgba(0, 240, 144, 0.25);
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+
+    .alarm-info-text {
+      font-size: 0.8rem;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    .alarm-info-text strong {
+      color: #fff;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .alarm-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-alarm-toggle {
+      flex: 1;
+      background: linear-gradient(135deg, rgba(0, 229, 255, 0.18), rgba(0, 240, 144, 0.15));
+      border: 1px solid rgba(0, 229, 255, 0.4);
+      color: #fff;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-alarm-toggle.active {
+      background: linear-gradient(135deg, #00e5ff 0%, #00f090 100%);
+      color: #041014;
+      border-color: #00f090;
+      box-shadow: 0 0 14px rgba(0, 240, 144, 0.35);
+    }
+
+    .btn-calendar-sync {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s;
+    }
+
+    .btn-calendar-sync:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    /* Live Alarm Countdown Banner */
+    .alarm-banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0, 229, 255, 0.12);
+      border: 1px solid rgba(0, 229, 255, 0.35);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      animation: pulseGlow 2.5s infinite;
+    }
+
+    .alarm-banner.triggered {
+      background: rgba(255, 71, 87, 0.2);
+      border-color: var(--danger);
+      animation: flashAlert 0.8s infinite;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 10px rgba(0, 229, 255, 0.15); }
+      50% { box-shadow: 0 0 20px rgba(0, 240, 144, 0.35); }
+    }
+
+    @keyframes flashAlert {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .alarm-banner-content {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .alarm-bell-icon {
+      width: 20px;
+      height: 20px;
+      stroke: var(--accent-cyan);
+      animation: swingBell 1.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes swingBell {
+      0% { transform: rotate(-12deg); }
+      100% { transform: rotate(12deg); }
+    }
+
+    .alarm-banner-text h4 {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .alarm-banner-text p {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .btn-dismiss-alarm {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 5px 9px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    /* Maintenance Presets Tags */
+    .quick-chips-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .chip-btn {
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 4px 9px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .chip-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    textarea.input-field {
+      resize: vertical;
+      min-height: 64px;
+      line-height: 1.4;
+      padding: 10px 14px;
+    }
+
+    /* Submit Button */
+    .btn-submit {
+      width: 100%;
+      height: 52px;
+      background: linear-gradient(135deg, #00f090 0%, #00d27c 100%);
+      color: #06120b;
+      font-size: 0.96rem;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      box-shadow: 0 10px 24px -4px var(--accent-glow), 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      margin-top: 20px;
+    }
+
+    .btn-submit:hover {
+      transform: translateY(-1.5px);
+      box-shadow: 0 14px 28px -4px rgba(0, 240, 144, 0.45);
+    }
+
+    .btn-submit:active {
+      transform: translateY(0.5px);
+    }
+
+    .btn-submit:disabled {
+      background: #192026;
+      color: #485361;
+      box-shadow: none;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-submit svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 2.5;
+    }
+
+    /* Status Notification Bar */
+    .status-toast {
+      margin-top: 14px;
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-align: center;
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .status-toast.success {
+      display: block;
+      background: rgba(0, 240, 144, 0.1);
+      border: 1px solid rgba(0, 240, 144, 0.3);
+      color: var(--accent);
+    }
+
+    .status-toast.error {
+      display: block;
+      background: rgba(255, 71, 87, 0.1);
+      border: 1px solid rgba(255, 71, 87, 0.3);
+      color: var(--danger);
+    }
+
+    /* Footer Config Trigger */
+    .app-footer {
+      margin-top: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+
+    .settings-trigger {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      transition: color 0.15s;
+    }
+
+    .settings-trigger:hover {
+      color: #fff;
+    }
+
+    .settings-trigger svg {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+    }
+
+    /* Minimalist URL Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(10px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 100;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-box {
+      width: 100%;
+      max-width: 400px;
+      background: #11151b;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+    }
+
+    .modal-box h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .modal-box p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      line-height: 1.4;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .btn-modal {
+      flex: 1;
+      padding: 10px;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-modal-cancel {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+    }
+
+    .btn-modal-save {
+      background: var(--accent);
+      color: #000;
+      font-weight: 700;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-shell">
+  <!-- Brand Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="none"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>YADEA <span>RS20</span></h1>
+        <p>Telemetry & Service Log</p>
+      </div>
+    </div>
+    <div class="status-pill">
+      <span class="status-dot"></span>
+      <span>SYNC READY</span>
+    </div>
+  </header>
+
+  <!-- Segmented Navigation -->
+  <div class="nav-tabs">
+    <button type="button" class="tab-btn active" id="tabCharge" onclick="switchMode('Charge')">
+      <svg viewBox="0 0 24 24">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+      </svg>
+      Charge & Ride
+    </button>
+    <button type="button" class="tab-btn" id="tabService" onclick="switchMode('Service')">
+      <svg viewBox="0 0 24 24">
+        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+      </svg>
+      Maintenance
+    </button>
+  </div>
+
+  <!-- Real-Time Alarm Active Banner -->
+  <div class="alarm-banner" id="activeAlarmBanner">
+    <div class="alarm-banner-content">
+      <svg class="alarm-bell-icon" viewBox="0 0 24 24" fill="none" stroke-width="2">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+      </svg>
+      <div class="alarm-banner-text">
+        <h4 id="bannerAlarmTitle">Charging Alarm Armed</h4>
+        <p id="bannerAlarmCountdown">Full in --:--</p>
+      </div>
+    </div>
+    <button type="button" class="btn-dismiss-alarm" onclick="stopActiveAlarm()">Stop Alarm</button>
+  </div>
+
+  <form id="trackerForm">
+    <!-- CHARGE MODE SECTION -->
+    <div id="chargeModeSection">
+      <!-- Battery Gauge Card -->
+      <div class="cockpit-card">
+        <div class="card-title-row">
+          <div class="card-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+              <rect x="2" y="7" width="16" height="10" rx="2" ry="2"></rect>
+              <line x1="22" y1="11" x2="22" y2="13"></line>
+            </svg>
+            Start Battery Level
+          </div>
+          <span class="card-badge" id="batteryLevelBadge">1 Bar (~20%)</span>
+        </div>
+
+        <div class="battery-visual-gauge" id="batteryPicker">
+          <button type="button" class="battery-bar-btn lit" onclick="pickBars(1)">
+            <span class="bar-num">1</span>
+            <span class="bar-pct">20%</span>
+          </button>
+          <button type="button" class="battery-bar-btn" onclick="pickBars(2)">
+            <span class="bar-num">2</span>
+            <span class="bar-pct">40%</span>
+          </button>
+          <button type="button" class="battery-bar-btn" onclick="pickBars(3)">
+            <span class="bar-num">3</span>
+            <span class="bar-pct">60%</span>
+          </button>
+          <button type="button" class="battery-bar-btn" onclick="pickBars(4)">
+            <span class="bar-num">4</span>
+            <span class="bar-pct">80%</span>
+          </button>
+          <button type="button" class="battery-bar-btn" onclick="pickBars(5)">
+            <span class="bar-num">5</span>
+            <span class="bar-pct">100%</span>
+          </button>
+          <div class="battery-cap"></div>
+        </div>
+        <input type="hidden" id="startBars" value="1">
+
+        <div class="battery-target-info">
+          <span>Target: <strong>5 Bars (100% Full)</strong></span>
+          <span style="color: var(--accent); font-size: 0.72rem;">● Auto-Stop at Full</span>
+        </div>
+      </div>
+
+      <!-- Charging Times Card -->
+      <div class="cockpit-card">
+        <div class="card-title-row">
+          <div class="card-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            Charging Window
+          </div>
+        </div>
+
+        <div class="dual-time-grid">
+          <div class="time-card">
+            <div class="time-card-head">
+              <span class="time-card-label">Started At</span>
+              <button type="button" class="btn-quick-now" onclick="setNow('startTime')">NOW</button>
+            </div>
+            <input type="time" class="time-input-native" id="chargeStartTime" onchange="handleTimeChange()">
+          </div>
+
+          <div class="time-card">
+            <div class="time-card-head">
+              <span class="time-card-label">Est. Full Charge</span>
+              <button type="button" class="btn-quick-now" onclick="setNow('endTime')">NOW</button>
+            </div>
+            <input type="time" class="time-input-native" id="chargeEndTime" onchange="updateDuration()">
+          </div>
+        </div>
+
+        <div class="duration-indicator" id="durationIndicator">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          <span class="duration-text">Charge Session Duration: <strong id="durationDisplay"></strong></span>
+        </div>
+
+        <!-- Automatic Alarm & Time Calculation Box -->
+        <div class="smart-alarm-box" id="smartAlarmBox">
+          <div class="smart-alarm-header">
+            <div class="alarm-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 14 14"></polyline>
+              </svg>
+              Auto-Alarm & Calculation
+            </div>
+            <span class="alarm-est-badge" id="estDurationBadge">Est: 6h 24m</span>
+          </div>
+
+          <div class="alarm-info-text" id="alarmInfoText">
+            Charging from <strong>1 bar (20%)</strong> to 100% takes approx <strong>6h 24m</strong> (based on standard 8-hour full cycle).
+          </div>
+
+          <div class="alarm-actions">
+            <button type="button" class="btn-alarm-toggle" id="btnToggleAlarm" onclick="toggleChargeAlarm()">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+              <span id="alarmBtnText">Set Charge Alarm</span>
+            </button>
+            <button type="button" class="btn-calendar-sync" onclick="exportAlarmToCalendar()" title="Export alarm to Phone Calendar">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              Cal / Phone
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SERVICE MODE SECTION -->
+    <div id="serviceModeSection" style="display: none;">
+      <div class="cockpit-card">
+        <div class="card-title-row">
+          <div class="card-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+            Parts Replaced (What I Changed)
+          </div>
+        </div>
+        <div class="input-wrapper">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke-width="2">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          </svg>
+          <input type="text" class="input-field" id="partsChanged" placeholder="e.g. Brake pads, rear tire, headlight bulb">
+        </div>
+        <div class="quick-chips-wrap">
+          <button type="button" class="chip-btn" onclick="addChip('partsChanged', 'Brake Pads')">+ Brake Pads</button>
+          <button type="button" class="chip-btn" onclick="addChip('partsChanged', 'Tubeless Tire')">+ Tire</button>
+          <button type="button" class="chip-btn" onclick="addChip('partsChanged', 'Battery Cell')">+ Battery</button>
+          <button type="button" class="chip-btn" onclick="addChip('partsChanged', 'Mirror')">+ Mirror</button>
+        </div>
+      </div>
+
+      <div class="cockpit-card">
+        <div class="card-title-row">
+          <div class="card-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+            </svg>
+            Repairs & Adjustments (What I Fixed)
+          </div>
+        </div>
+        <div class="input-wrapper">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <input type="text" class="input-field" id="repairsFixed" placeholder="e.g. Brake cable tension, tire pressure 32psi">
+        </div>
+        <div class="quick-chips-wrap">
+          <button type="button" class="chip-btn" onclick="addChip('repairsFixed', 'Tire Pressure Checked')">+ Tire Pressure</button>
+          <button type="button" class="chip-btn" onclick="addChip('repairsFixed', 'Brakes Adjusted')">+ Brake Tune</button>
+          <button type="button" class="chip-btn" onclick="addChip('repairsFixed', 'Bolts Tightened')">+ Tighten Screws</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SHARED TELEMETRY READINGS -->
+    <div class="cockpit-card">
+      <div class="card-title-row">
+        <div class="card-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+          Odometer & Trip Telemetry
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="input-label" id="tripLabel">Trip Distance Traveled</label>
+        <div class="input-wrapper">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+          </svg>
+          <input type="number" step="0.1" class="input-field" id="tripDistance" placeholder="0.0">
+          <span class="input-suffix">KM</span>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="input-label">Current Bike Total Odometer</label>
+        <div class="input-wrapper">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke-width="2">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+          </svg>
+          <input type="number" step="0.1" class="input-field" id="odometer" placeholder="e.g. 1250.0" required>
+          <span class="input-suffix">TOTAL KM</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- REMARKS / NOTES -->
+    <div class="form-group">
+      <label class="input-label" id="notesLabel">Remarks / Location</label>
+      <div class="input-wrapper">
+        <textarea class="input-field no-icon" id="notes" rows="2" placeholder="e.g. Home 220V charger, rainy commute..."></textarea>
+      </div>
+    </div>
+
+    <!-- SUBMIT BUTTON -->
+    <button type="submit" class="btn-submit" id="submitBtn">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+        <polyline points="7 3 7 8 15 8"></polyline>
+      </svg>
+      Log Entry to Cloud
+    </button>
+
+    <div class="status-toast" id="statusToast"></div>
+  </form>
+
+  <footer class="app-footer">
+    <span>RS20 Cloud Telemetry</span>
+    <button type="button" class="settings-trigger" onclick="openConfigModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+      Sheet Webhook
+    </button>
+  </footer>
+</div>
+
+<!-- Config Modal -->
+<div class="modal-overlay" id="configModal">
+  <div class="modal-box">
+    <h3>Google Sheet Webhook</h3>
+    <p>Paste the Google Apps Script Web App URL (`.../exec`) below to sync your bike logs live into Google Sheets.</p>
+    <div class="input-wrapper">
+      <input type="url" class="input-field no-icon" id="webhookInput" placeholder="https://script.google.com/macros/s/.../exec">
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-modal btn-modal-cancel" onclick="closeConfigModal()">Cancel</button>
+      <button type="button" class="btn-modal btn-modal-save" onclick="saveWebhookUrl()">Save URL</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentMode = "Charge";
+  let selectedStartBars = 1;
+  const FULL_CYCLE_HOURS = 8.0; // 0% to 100% takes 8 Hours
+  const TOTAL_BARS = 5;
+
+  const STORAGE_KEY_WEBHOOK = "YADEA_RS20_WEBHOOK_URL";
+  const STORAGE_KEY_LAST_ODO = "YADEA_RS20_LAST_ODO";
+  const STORAGE_KEY_ALARM = "YADEA_RS20_ACTIVE_ALARM";
+
+  let alarmTimerInterval = null;
+  let audioContext = null;
+
+  // Initialize
+  window.addEventListener("DOMContentLoaded", () => {
+    pickBars(1);
+    const savedOdo = localStorage.getItem(STORAGE_KEY_LAST_ODO);
+    if (savedOdo && document.getElementById("odometer")) {
+      document.getElementById("odometer").value = savedOdo;
+    }
+
+    // Check if an alarm is running across reloads
+    restoreSavedAlarm();
+  });
+
+  function switchMode(mode) {
+    currentMode = mode;
+    document.getElementById("tabCharge").classList.toggle("active", mode === "Charge");
+    document.getElementById("tabService").classList.toggle("active", mode === "Service");
+
+    const chargeSection = document.getElementById("chargeModeSection");
+    const serviceSection = document.getElementById("serviceModeSection");
+    const tripLabel = document.getElementById("tripLabel");
+    const notesLabel = document.getElementById("notesLabel");
+    const tripInput = document.getElementById("tripDistance");
+
+    if (mode === "Service") {
+      chargeSection.style.display = "none";
+      serviceSection.style.display = "block";
+      tripLabel.innerText = "Trip Distance (Optional)";
+      notesLabel.innerText = "Workshop / Service Center Notes";
+      tripInput.placeholder = "0.0";
+    } else {
+      chargeSection.style.display = "block";
+      serviceSection.style.display = "none";
+      tripLabel.innerText = "Trip Distance Traveled";
+      notesLabel.innerText = "Remarks / Charging Location";
+      tripInput.placeholder = "e.g. 24.5";
+    }
+  }
+
+  // Calculate needed charge hours based on starting bars
+  function getEstimatedChargeHours(bars) {
+    // Each bar is 20%. Remaining percentage needed to reach 100% = (5 - bars) * 20%
+    const remainingPct = Math.max(0, (TOTAL_BARS - bars) / TOTAL_BARS);
+    return remainingPct * FULL_CYCLE_HOURS; // in hours
+  }
+
+  function pickBars(bars) {
+    selectedStartBars = bars;
+    document.getElementById("startBars").value = bars;
+    
+    const pct = bars * 20;
+    const badge = document.getElementById("batteryLevelBadge");
+    if (badge) {
+      badge.innerText = `${bars} Bar${bars > 1 ? 's' : ''} (~${pct}%)`;
+    }
+
+    const buttons = document.querySelectorAll("#batteryPicker .battery-bar-btn");
+    buttons.forEach((btn, index) => {
+      btn.classList.toggle("lit", index < bars);
+    });
+
+    updateChargingCalculations();
+  }
+
+  function updateChargingCalculations() {
+    const estHours = getEstimatedChargeHours(selectedStartBars);
+    const estMinutesTotal = Math.round(estHours * 60);
+    const hrs = Math.floor(estMinutesTotal / 60);
+    const mins = estMinutesTotal % 60;
+    const durationText = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+
+    const estBadge = document.getElementById("estDurationBadge");
+    const infoText = document.getElementById("alarmInfoText");
+
+    if (estBadge) {
+      estBadge.innerText = `Est: ${durationText}`;
+    }
+
+    const startVal = document.getElementById("chargeStartTime").value;
+    let targetTimeStr = "";
+
+    if (startVal) {
+      const [sh, sm] = startVal.split(":").map(Number);
+      const targetDate = new Date();
+      targetDate.setHours(sh, sm, 0, 0);
+      targetDate.setMinutes(targetDate.getMinutes() + estMinutesTotal);
+
+      const targetH = String(targetDate.getHours()).padStart(2, '0');
+      const targetM = String(targetDate.getMinutes()).padStart(2, '0');
+      targetTimeStr = `${targetH}:${targetM}`;
+
+      // Automatically populate End Time with calculated completion time
+      const endInput = document.getElementById("chargeEndTime");
+      if (endInput && (!endInput.value || endInput.dataset.autoFilled === "true")) {
+        endInput.value = targetTimeStr;
+        endInput.dataset.autoFilled = "true";
+        updateDuration();
+      }
+    }
+
+    if (infoText) {
+      if (selectedStartBars >= 5) {
+        infoText.innerHTML = `Battery is already at <strong>100% Full</strong>. No charge time required!`;
+      } else if (targetTimeStr) {
+        infoText.innerHTML = `Charging from <strong>${selectedStartBars} bar (${selectedStartBars * 20}%)</strong> needs <strong>${durationText}</strong>. Full at approx <strong>${targetTimeStr}</strong>.`;
+      } else {
+        infoText.innerHTML = `Charging from <strong>${selectedStartBars} bar (${selectedStartBars * 20}%)</strong> needs <strong>${durationText}</strong> (8h full cycle rate). Select a Start Time to calculate completion.`;
+      }
+    }
+  }
+
+  function handleTimeChange() {
+    // When user changes Start Time manually, recalculate
+    document.getElementById("chargeEndTime").dataset.autoFilled = "true";
+    updateChargingCalculations();
+  }
+
+  function setNow(fieldId) {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const target = fieldId === 'startTime' ? document.getElementById("chargeStartTime") : document.getElementById("chargeEndTime");
+    if (target) {
+      target.value = `${hours}:${minutes}`;
+      if (fieldId === 'startTime') {
+        document.getElementById("chargeEndTime").dataset.autoFilled = "true";
+        updateChargingCalculations();
+      } else {
+        target.dataset.autoFilled = "false";
+        updateDuration();
+      }
+    }
+  }
+
+  function updateDuration() {
+    const start = document.getElementById("chargeStartTime").value;
+    const end = document.getElementById("chargeEndTime").value;
+    const indicator = document.getElementById("durationIndicator");
+    const display = document.getElementById("durationDisplay");
+
+    if (!start || !end) {
+      indicator.style.display = "none";
+      return "";
+    }
+
+    const [sh, sm] = start.split(":").map(Number);
+    const [eh, em] = end.split(":").map(Number);
+
+    let startMins = sh * 60 + sm;
+    let endMins = eh * 60 + em;
+    if (endMins < startMins) endMins += 24 * 60; // Overnight charging
+
+    const diff = endMins - startMins;
+    const hrs = Math.floor(diff / 60);
+    const mins = diff % 60;
+    const formatted = `${hrs > 0 ? hrs + 'h ' : ''}${mins}m`;
+
+    display.innerText = formatted;
+    indicator.style.display = "flex";
+    return formatted;
+  }
+
+  /* ============================================================
+     SMART ALARM TIMER & NOTIFICATION SYSTEM
+     ============================================================ */
+
+  function requestNotificationPermission() {
+    if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+      Notification.requestPermission();
+    }
+  }
+
+  function toggleChargeAlarm() {
+    const activeAlarm = localStorage.getItem(STORAGE_KEY_ALARM);
+    if (activeAlarm) {
+      stopActiveAlarm();
+      return;
+    }
+
+    requestNotificationPermission();
+
+    // Ensure we have a start time
+    let startVal = document.getElementById("chargeStartTime").value;
+    if (!startVal) {
+      setNow('startTime');
+      startVal = document.getElementById("chargeStartTime").value;
+    }
+
+    const estHours = getEstimatedChargeHours(selectedStartBars);
+    if (estHours <= 0) {
+      showToast("Battery is already full (5 bars)!", "error");
+      return;
+    }
+
+    const estMinutes = Math.round(estHours * 60);
+    const now = new Date();
+    const [sh, sm] = startVal.split(":").map(Number);
+
+    const chargeDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), sh, sm, 0, 0);
+    // If start time is ahead of now by more than 10 mins, assume it was yesterday
+    if (chargeDate.getTime() > now.getTime() + 10 * 60000) {
+      chargeDate.setDate(chargeDate.getDate() - 1);
+    }
+
+    const targetTimestamp = chargeDate.getTime() + (estMinutes * 60 * 1000);
+
+    const alarmData = {
+      targetTime: targetTimestamp,
+      startBars: selectedStartBars,
+      estMinutes: estMinutes
+    };
+
+    localStorage.setItem(STORAGE_KEY_ALARM, JSON.stringify(alarmData));
+    startAlarmCountdown(alarmData);
+    showToast(`✓ Alarm set! Yadea RS20 will be 100% full in ${Math.floor(estMinutes/60)}h ${estMinutes%60}m`, "success");
+  }
+
+  function startAlarmCountdown(alarmData) {
+    const banner = document.getElementById("activeAlarmBanner");
+    const toggleBtn = document.getElementById("btnToggleAlarm");
+    const btnText = document.getElementById("alarmBtnText");
+
+    banner.style.display = "flex";
+    banner.classList.remove("triggered");
+    toggleBtn.classList.add("active");
+    btnText.innerText = "Cancel Alarm";
+
+    if (alarmTimerInterval) clearInterval(alarmTimerInterval);
+
+    alarmTimerInterval = setInterval(() => {
+      const now = Date.now();
+      const remainingMs = alarmData.targetTime - now;
+
+      if (remainingMs <= 0) {
+        clearInterval(alarmTimerInterval);
+        triggerAlarmAlert();
+      } else {
+        const totalSecs = Math.floor(remainingMs / 1000);
+        const hrs = Math.floor(totalSecs / 3600);
+        const mins = Math.floor((totalSecs % 3600) / 60);
+        const secs = totalSecs % 60;
+        const formatted = `${hrs > 0 ? hrs + 'h ' : ''}${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
+
+        document.getElementById("bannerAlarmTitle").innerText = `Yadea RS20 Charging (${alarmData.startBars} → 5 Bars)`;
+        document.getElementById("bannerAlarmCountdown").innerText = `Full Charge in: ${formatted}`;
+      }
+    }, 1000);
+  }
+
+  function triggerAlarmAlert() {
+    const banner = document.getElementById("activeAlarmBanner");
+    banner.classList.add("triggered");
+    document.getElementById("bannerAlarmTitle").innerText = "⚡ RS20 BATTERY IS 100% FULL!";
+    document.getElementById("bannerAlarmCountdown").innerText = "Unplug bike to protect battery cell life";
+
+    // Play Beep Alarm via Web Audio API (No external sound files required)
+    playAlarmBeep();
+
+    // Trigger Browser Notification if available
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification("Yadea RS20 Fully Charged! ⚡", {
+        body: "Your bike has reached 5 Bars (100% Full). Remember to unplug your charger.",
+        icon: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2300f090'><path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z'/></svg>"
+      });
+    }
+  }
+
+  function playAlarmBeep() {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      audioContext = new AudioCtx();
+
+      function beep(freq, delay, dur) {
+        setTimeout(() => {
+          if (!audioContext) return;
+          const osc = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          osc.type = "sine";
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.3, audioContext.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + dur);
+          osc.connect(gain);
+          gain.connect(audioContext.destination);
+          osc.start();
+          osc.stop(audioContext.currentTime + dur);
+        }, delay);
+      }
+
+      // Triple pulsating alert chime
+      beep(880, 0, 0.2);
+      beep(1046, 250, 0.2);
+      beep(1318, 500, 0.4);
+      beep(880, 900, 0.2);
+      beep(1046, 1150, 0.2);
+      beep(1318, 1400, 0.5);
+    } catch (e) {
+      console.warn("Audio Context beep error:", e);
+    }
+  }
+
+  function stopActiveAlarm() {
+    localStorage.removeItem(STORAGE_KEY_ALARM);
+    if (alarmTimerInterval) clearInterval(alarmTimerInterval);
+    const banner = document.getElementById("activeAlarmBanner");
+    const toggleBtn = document.getElementById("btnToggleAlarm");
+    const btnText = document.getElementById("alarmBtnText");
+
+    banner.style.display = "none";
+    banner.classList.remove("triggered");
+    toggleBtn.classList.remove("active");
+    btnText.innerText = "Set Charge Alarm";
+    showToast("Alarm cancelled", "success");
+  }
+
+  function restoreSavedAlarm() {
+    const raw = localStorage.getItem(STORAGE_KEY_ALARM);
+    if (!raw) return;
+    try {
+      const alarmData = JSON.parse(raw);
+      if (alarmData && alarmData.targetTime) {
+        startAlarmCountdown(alarmData);
+      }
+    } catch(e) {
+      localStorage.removeItem(STORAGE_KEY_ALARM);
+    }
+  }
+
+  // Export as phone Calendar / Reminder .ics file
+  function exportAlarmToCalendar() {
+    let startVal = document.getElementById("chargeStartTime").value;
+    if (!startVal) {
+      setNow('startTime');
+      startVal = document.getElementById("chargeStartTime").value;
+    }
+
+    const estHours = getEstimatedChargeHours(selectedStartBars);
+    const estMinutes = Math.round(estHours * 60);
+    const now = new Date();
+    const [sh, sm] = startVal.split(":").map(Number);
+
+    const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), sh, sm, 0);
+    const endDate = new Date(startDate.getTime() + (estMinutes * 60 * 1000));
+
+    function formatICSDate(d) {
+      return d.toISOString().replace(/-|:|\.\d+/g, '');
+    }
+
+    const icsContent = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Yadea RS20//Charge Tracker//EN",
+      "BEGIN:VEVENT",
+      `UID:yadea-rs20-charge-${Date.now()}@yadea.local`,
+      `DTSTAMP:${formatICSDate(now)}`,
+      `DTSTART:${formatICSDate(endDate)}`,
+      `DTEND:${formatICSDate(new Date(endDate.getTime() + 15*60000))}`,
+      "SUMMARY:⚡ Unplug Yadea RS20 (100% Full Charge)",
+      `DESCRIPTION:Battery charged from ${selectedStartBars} bars to Full (5 bars). Estimated duration was ${Math.floor(estMinutes/60)}h ${estMinutes%60}m.`,
+      "BEGIN:VALARM",
+      "ACTION:AUDIO",
+      "TRIGGER:-PT0M",
+      "DESCRIPTION:RS20 Charging Complete",
+      "END:VALARM",
+      "END:VEVENT",
+      "END:VCALENDAR"
+    ].join("\r\n");
+
+    const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `Yadea_RS20_Charge_Alarm.ics`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("✓ Reminder event downloaded! Open it to add to Phone Calendar / Alarm.", "success");
+  }
+
+  function addChip(targetInputId, text) {
+    const input = document.getElementById(targetInputId);
+    if (!input) return;
+    if (input.value.trim() === "") {
+      input.value = text;
+    } else {
+      input.value += `, ${text}`;
+    }
+    input.focus();
+  }
+
+  // Webhook Settings Modal
+  function openConfigModal() {
+    const current = localStorage.getItem(STORAGE_KEY_WEBHOOK) || "";
+    document.getElementById("webhookInput").value = current;
+    document.getElementById("configModal").classList.add("open");
+  }
+
+  function closeConfigModal() {
+    document.getElementById("configModal").classList.remove("open");
+  }
+
+  function saveWebhookUrl() {
+    const url = document.getElementById("webhookInput").value.trim();
+    if (url) {
+      localStorage.setItem(STORAGE_KEY_WEBHOOK, url);
+    }
+    closeConfigModal();
+    showToast("Webhook URL updated", "success");
+  }
+
+  function showToast(msg, type) {
+    const toast = document.getElementById("statusToast");
+    toast.className = `status-toast ${type}`;
+    toast.innerText = msg;
+    setTimeout(() => {
+      toast.className = "status-toast";
+      toast.innerText = "";
+    }, 4500);
+  }
+
+  // Form Submit Handler
+  document.getElementById("trackerForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const btn = document.getElementById("submitBtn");
+    btn.disabled = true;
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg> Transmitting Telemetry...`;
+
+    const odoVal = document.getElementById("odometer").value || 0;
+    localStorage.setItem(STORAGE_KEY_LAST_ODO, odoVal);
+
+    const payload = {
+      entryType: currentMode,
+      startBars: currentMode === "Charge" ? `${selectedStartBars} / 5 (${selectedStartBars * 20}%)` : "-",
+      endBars: currentMode === "Charge" ? "5 / 5 (100% Full)" : "-",
+      startTime: currentMode === "Charge" ? (document.getElementById("chargeStartTime").value || "") : "",
+      endTime: currentMode === "Charge" ? (document.getElementById("chargeEndTime").value || "") : "",
+      duration: currentMode === "Charge" ? updateDuration() : "",
+      partsChanged: currentMode === "Service" ? document.getElementById("partsChanged").value.trim() : "",
+      repairsFixed: currentMode === "Service" ? document.getElementById("repairsFixed").value.trim() : "",
+      tripDistance: document.getElementById("tripDistance").value || 0,
+      odometer: odoVal,
+      notes: document.getElementById("notes").value.trim()
+    };
+
+    const webhookUrl = localStorage.getItem(STORAGE_KEY_WEBHOOK);
+
+    if (!webhookUrl) {
+      // Local demo mode if no webhook URL is entered yet
+      setTimeout(() => {
+        showToast("✓ Saved locally! Tap 'Sheet Webhook' below to sync with Google Sheets.", "success");
+        btn.disabled = false;
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Log Entry to Cloud`;
+        resetFields();
+      }, 600);
+      return;
+    }
+
+    fetch(webhookUrl, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+    .then(() => {
+      showToast("✓ Telemetry uploaded to Google Sheets successfully!", "success");
+      resetFields();
+    })
+    .catch(() => {
+      showToast("Transmission error. Please check internet connection.", "error");
+    })
+    .finally(() => {
+      btn.disabled = false;
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Log Entry to Cloud`;
+    });
+  });
+
+  function resetFields() {
+    document.getElementById("tripDistance").value = "";
+    document.getElementById("notes").value = "";
+    if (document.getElementById("partsChanged")) document.getElementById("partsChanged").value = "";
+    if (document.getElementById("repairsFixed")) document.getElementById("repairsFixed").value = "";
+    document.getElementById("chargeStartTime").value = "";
+    document.getElementById("chargeEndTime").value = "";
+    document.getElementById("durationIndicator").style.display = "none";
+  }
+</script>
+</body>
+</html>
